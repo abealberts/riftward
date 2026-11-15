@@ -1,7 +1,8 @@
 import React,{useEffect,useRef,useState} from 'react'
-import {battle,initialEnemies,identifyRoute,lines,routes} from './engine'
+import {battle,initialEnemies,lines,routes} from './engine'
 import {encounterEnemies,missions,names,sprite,stats,type Fighter} from './data'
 import type {Run} from './save'
+import {swipeRoute,touchCell,type Point} from './swipe'
 import './battle.css'
 
 type Props={team:Fighter[];run:Run;next:(run:Run)=>void;finish:(hp:number[],won:boolean)=>void}
@@ -9,7 +10,7 @@ const lineNames=['Upper row','Middle row','Lower row','Falling diagonal','Rising
 export function Battle({team,run,next,finish}:Props){
  const [ids,setIds]=useState<number[]>([]),[trail,setTrail]=useState<number[]>([]),[hint,setHint]=useState('')
  const [result,setResult]=useState<ReturnType<typeof battle>|null>(null),[position,setPosition]=useState(0),[speed,setSpeed]=useState(1)
- const pointer=useRef<{id:number;slots:number[];x:number;y:number}|null>(null)
+ const pointer=useRef<{id:number;points:Point[]}|null>(null)
  const mission=missions[run.mission], roster=encounterEnemies(run.mission,run.encounter)
  const frame=result?.frames[position-1],hp=frame?.hp??run.hp,enemies=frame?.enemies??initialEnemies(run.mission,run.encounter,run.enemies??run.enemy)
  const index=frame?.line??(result?0:Math.max(0,ids.length-1)),active=routes[ids[index]]??lines[0]
@@ -30,21 +31,38 @@ export function Battle({team,run,next,finish}:Props){
    setIds(selection);setHint('')
    if(selection.length===3)setResult(battle(team,run.hp,selection,run.mission,run.encounter,run.seed,run.enemies??run.enemy))
  }
- function slotAt(board:HTMLDivElement,x:number,y:number){
-   const rect=board.getBoundingClientRect(),col=Math.floor(3*(x-rect.left)/rect.width),row=Math.floor(3*(y-rect.top)/rect.height)
-   if(col<0||col>2||row<0||row>2)return -1
-   if(Math.abs(3*(x-rect.left)/rect.width-col-.5)>.39||Math.abs(3*(y-rect.top)/rect.height-row-.5)>.39)return -2
-   return row*3+col
+ function boardPoint(e:React.PointerEvent<HTMLDivElement>):Point{
+   const rect=e.currentTarget.getBoundingClientRect()
+   // Clamp edge overshoot so releasing outside a corner still finishes that line.
+   const coordinate=(offset:number,size:number)=>Math.max(0,Math.min(3,3*offset/size))
+   return {x:coordinate(e.clientX-rect.left,rect.width),y:coordinate(e.clientY-rect.top,rect.height)}
+ }
+ function startSwipe(e:React.PointerEvent<HTMLDivElement>){
+   if(result||pointer.current||e.button!==0)return
+   const point=boardPoint(e)
+   pointer.current={id:e.pointerId,points:[point]}
+   e.currentTarget.setPointerCapture(e.pointerId)
+   setTrail([touchCell(point)])
  }
  function trace(e:React.PointerEvent<HTMLDivElement>){
    const gesture=pointer.current
-   if(!gesture||gesture.id!==e.pointerId)return
-   const steps=Math.max(1,Math.ceil(Math.hypot(e.clientX-gesture.x,e.clientY-gesture.y)/8))
-   for(let i=1;i<=steps;i++){
-     const slot=slotAt(e.currentTarget,gesture.x+(e.clientX-gesture.x)*i/steps,gesture.y+(e.clientY-gesture.y)*i/steps)
-     if(slot!==-2&&slot!==gesture.slots.at(-1))gesture.slots.push(slot)
-   }
-   gesture.x=e.clientX;gesture.y=e.clientY;setTrail([...gesture.slots])
+   if(gesture?.id!==e.pointerId)return
+   const point=boardPoint(e)
+   gesture.points.push(point)
+   const route=swipeRoute(gesture.points)
+   setTrail(route>=0?routes[route]:[touchCell(gesture.points[0]),touchCell(point)])
+ }
+ function cancelSwipe(e:React.PointerEvent<HTMLDivElement>){
+   if(pointer.current?.id!==e.pointerId)return
+   pointer.current=null
+   setTrail([])
+ }
+ function endSwipe(e:React.PointerEvent<HTMLDivElement>){
+   const gesture=pointer.current
+   if(gesture?.id!==e.pointerId)return
+   gesture.points.push(boardPoint(e))
+   select(swipeRoute(gesture.points))
+   cancelSwipe(e)
  }
  function advance(){
    if(!result)return
@@ -56,7 +74,7 @@ export function Battle({team,run,next,finish}:Props){
  <div className="stage" key={position}><div className="squad">{active.map(slot=><div key={slot} className={'actor '+(!hp[slot]?'fallen ':'')+(frame?.slot===slot?(frame.side==='ally'?'strike':'hurt'):'')}><img src={sprite(team[slot].kind)} alt={names[team[slot].kind]}/><small>{names[team[slot].kind]}</small>{frame?.side==='enemy'&&frame.slot===slot&&<b>−{frame.amount}</b>}</div>)}</div><div className="enemySquad">{roster.map((foe,i)=><div key={foe.name} className={'foe '+(!enemies[i]?'fallen ':'')+(frame?.foe===i?(frame.side==='enemy'?'counter':'hurt'):'')}><img src={sprite(foe.kind)} alt=""/><small>{foe.name}</small><meter aria-label={foe.name+' health'} min={0} max={foe.maxHP} value={enemies[i]}/><small>{enemies[i]} / {foe.maxHP} HP</small>{frame?.side==='ally'&&frame.foe===i&&<b>−{frame.amount}</b>}</div>)}</div></div>
  <div className="ticker"><strong>{result?'LINE '+(index+1):'FORMATION'}</strong>{frame?.text??(result?'Resolving initiative…':'Ready your attack lines.')}</div></div>
  <div className="tactics"><div><h2>Attack formation</h2><p>Swipe through a row or diagonal in either direction.</p>
- <div className="swipeboard" onPointerDown={e=>{if(result||pointer.current||e.button!==0)return;const slot=slotAt(e.currentTarget,e.clientX,e.clientY);pointer.current={id:e.pointerId,slots:slot===-2?[]:[slot],x:e.clientX,y:e.clientY};e.currentTarget.setPointerCapture(e.pointerId);setTrail([slot])}} onPointerMove={trace} onPointerUp={e=>{if(pointer.current?.id!==e.pointerId)return;trace(e);select(identifyRoute(pointer.current.slots));pointer.current=null;setTrail([])}} onLostPointerCapture={()=>{pointer.current=null;setTrail([])}}>
+ <div className="swipeboard" onPointerDown={startSwipe} onPointerMove={trace} onPointerUp={endSwipe} onPointerCancel={cancelSwipe} onLostPointerCapture={cancelSwipe}>
  {team.map((f,i)=><div key={i} className={'swipeCell '+(trail.includes(i)?'traced':'')}><img draggable={false} src={sprite(f.kind)} alt={names[f.kind]}/><small>{i+1} · {hp[i]} HP</small></div>)}
  <svg viewBox="0 0 300 300" preserveAspectRatio="none" aria-hidden="true">{[...ids.map(id=>routes[id]),trail].map((slots,i)=><polyline key={i} points={slots.filter(s=>s>=0).map(s=>(s%3*100+50)+','+(Math.floor(s/3)*100+50)).join(' ')} stroke={['#ccff85','#feb870','#bcacff','#fff'][i]}/>)}</svg></div></div>
  <div className="orders"><h2>Attack sequence</h2><p>Queue three lines. Higher AGI acts first across the turn. Ties follow swipe order.</p><ol>{[0,1,2].map(i=><li className={result&&i===index?'playing':''} key={i}><small>0{i+1}</small>{ids[i]===undefined?'Awaiting swipe':lineNames[ids[i]%5]+' · '+routes[ids[i]].map(n=>n+1).join('→')}</li>)}</ol>
