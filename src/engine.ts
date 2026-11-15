@@ -23,9 +23,20 @@ export function battle(party:Fighter[], initial:number[], ids:number[], mission:
   const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296}
   const hp=[...initial],frames:Frame[]=[]
   const roster=encounterEnemies(mission,encounter),enemies=initialEnemies(mission,encounter,saved)
-  for(const [line,id] of ids.entries()){
-    const active=routes[id]
-    for(const slot of active){
+  // Stable ties follow queued line order, then swipe direction, then the enemy.
+  const actions=ids.flatMap((id,line)=>{
+    const actors=routes[id].filter(slot=>hp[slot]>0).map(slot=>({line,slot,foe:-1,speed:stats(party[slot]).agi}))
+    const standing=roster.map((_,i)=>i).filter(i=>enemies[i]>0)
+    if(standing.length&&actors.length){
+      const foe=standing[Math.floor(random()*standing.length)]
+      actors.push({line,slot:-1,foe,speed:roster[foe].agi})
+    }
+    return actors
+  }).sort((a,b)=>b.speed-a.speed)
+  for(const action of actions){
+    if(!enemies.some(Boolean)||!hp.some(Boolean))break
+    const {line,slot}=action
+    if(action.foe<0){
       const foe=enemies.findIndex(n=>n>0)
       if(foe<0)break
       if(!hp[slot])continue
@@ -34,14 +45,15 @@ export function battle(party:Fighter[], initial:number[], ids:number[], mission:
       enemies[foe]=Math.max(0,enemies[foe]-amount)
       frames.push({side:'ally',amount,line,slot,foe,hp:[...hp],enemies:[...enemies],text:names[fighter.kind]+' · '+(special?skills[fighter.kind%3]:'Strike')+' hits '+roster[foe].name+' for '+amount+'.'})
     }
-    const standing=enemies.flatMap((n,i)=>n>0?[i]:[])
-    const targets=active.filter(slot=>hp[slot]>0)
-    if(!standing.length||!hp.some(Boolean))break
-    if(!targets.length)continue
-    const foe=standing[Math.floor(random()*standing.length)],slot=targets[Math.floor(random()*targets.length)]
+    else {
+    const foe=action.foe
+    const targets=routes[ids[line]].filter(i=>hp[i]>0)
+    if(!enemies[foe]||!targets.length)continue
+    const slot=targets[Math.floor(random()*targets.length)]
     const amount=damage(11+mission*3+encounter,stats(party[slot]).def,random())
     hp[slot]=Math.max(0,hp[slot]-amount)
     frames.push({side:'enemy',amount,line,slot,foe,hp:[...hp],enemies:[...enemies],text:roster[foe].name+' hits '+names[party[slot].kind]+' for '+amount+(hp[slot]?'.':' and defeats it.')})
+  }
   }
   return {frames,hp,enemies,seed,won:enemies.every(n=>n===0)}
 }

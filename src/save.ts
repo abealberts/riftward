@@ -1,9 +1,9 @@
-import {missions,names,stats,type Fighter} from './data'
+import {missions,names,stats,pullCost,rollKind,type Fighter} from './data'
 export type Run={mission:number;encounter:number;hp:number[];enemy?:number;enemies?:number[];paidXP?:number;turn?:number;seed:number}
 export type Save={version:1;fighters:Fighter[];formation:(string|null)[];xp:number;coins:number;cleared:number;run:Run|null;victory?:{mission:number;encounter:number;xp:number;coins:number}}
 export const key='riftward.v1'
 export function fresh():Save{
- const fighters=names.map((_,kind)=>({kind,id:crypto.randomUUID(),xp:0}))
+ const fighters=names.slice(0,12).map((_,kind)=>({kind,id:crypto.randomUUID(),xp:0}))
  return {version:1,fighters,formation:fighters.slice(0,9).map(f=>f.id),xp:0,coins:0,cleared:0,run:null}
 }
 export const party=(s:Save)=>s.formation.map(id=>s.fighters.find(f=>f.id===id))
@@ -31,3 +31,9 @@ export function load(store:Pick<Storage,'getItem'>):Save{
  return fresh()
 }
 export const persist=(s:Save,store:Pick<Storage,'setItem'>)=>store.setItem(key,JSON.stringify(s))
+
+export function summon(save:Save,rarityRoll:number,unitRoll:number,id:string):Save{
+ if(save.coins<pullCost)return save
+ const fighter={id,kind:rollKind(rarityRoll,unitRoll),xp:0}
+ return {...save,coins:save.coins-pullCost,fighters:[...save.fighters,fighter]}
+}
