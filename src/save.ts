@@ -1,6 +1,6 @@
 import {missions,names,stats,pullCost,rollKind,type Fighter} from './data'
 export type Run={mission:number;encounter:number;hp:number[];enemy?:number;enemies?:number[];paidXP?:number;turn?:number;seed:number}
-export type Save={version:1;fighters:Fighter[];formation:(string|null)[];xp:number;coins:number;cleared:number;run:Run|null;victory?:{mission:number;encounter:number;xp:number;coins:number}}
+export type Save={pendingSummons?:string[];summonCount?:number;version:1;fighters:Fighter[];formation:(string|null)[];xp:number;coins:number;cleared:number;run:Run|null;victory?:{mission:number;encounter:number;xp:number;coins:number}}
 export const key='riftward.v1'
 export function fresh():Save{
  const fighters=names.slice(0,12).map((_,kind)=>({kind,id:crypto.randomUUID(),xp:0}))
@@ -32,8 +32,14 @@ export function load(store:Pick<Storage,'getItem'>):Save{
 }
 export const persist=(s:Save,store:Pick<Storage,'setItem'>)=>store.setItem(key,JSON.stringify(s))
 
-export function summon(save:Save,rarityRoll:number,unitRoll:number,id:string):Save{
- if(save.coins<pullCost)return save
- const fighter={id,kind:rollKind(rarityRoll,unitRoll),xp:0}
- return {...save,coins:save.coins-pullCost,fighters:[...save.fighters,fighter]}
+export type SummonRoll={rarityRoll:number;unitRoll:number;id:string}
+export function summonBatch(save:Save,rolls:SummonRoll[]):Save{
+ const cost=rolls.length*pullCost
+ if((rolls.length!==1&&rolls.length!==10)||save.coins<cost||save.pendingSummons?.length)return save
+ const fighters=rolls.map(({id,rarityRoll,unitRoll})=>({id,kind:rollKind(rarityRoll,unitRoll),xp:0}))
+ return {...save,coins:save.coins-cost,fighters:[...save.fighters,...fighters],summonCount:rolls.length,pendingSummons:fighters.map(f=>f.id)}
+}
+export function advanceSummon(save:Save,id:string):Save{
+ if(save.pendingSummons?.[0]!==id)return save
+ return {...save,pendingSummons:save.pendingSummons.slice(1)}
 }

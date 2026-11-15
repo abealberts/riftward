@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest'
 import {battle,damage,validLines,identifyRoute} from './engine'
-import {begin,finish,fresh,party,load,persist,summon} from './save'
+import {begin,finish,fresh,party,load,persist,summonBatch,advanceSummon} from './save'
 import {level,stats,encounterEnemies,rollKind,rarityTier,names,type Fighter} from './data'
 describe('combat and campaign',()=>{
  it('accepts intersecting lines and rejects the same line in reverse',()=>{
@@ -55,13 +55,22 @@ describe('combat and campaign',()=>{
  expect([0,1,2,3].map(tier=>names.filter((_,i)=>rarityTier(i)===tier).length)).toEqual([12,8,5,3])
  expect([0,.64999,.65,.89999,.90,.97999,.98,.99999].map(v=>rarityTier(rollKind(v,.5)))).toEqual([0,0,1,1,2,2,3,3])
  })
- it('charges exactly once per summon and keeps duplicate instances through reload',()=>{
- const start={...fresh(),coins:80}
- const first=summon(start,.99,.5,'first'),second=summon(first,.99,.5,'second')
- expect(second.coins).toBe(0);expect(second.fighters).toHaveLength(14)
- expect(second.fighters.slice(-2)).toEqual([{kind:26,id:'first',xp:0},{kind:26,id:'second',xp:0}])
- expect(summon(second,0,0,'third')).toBe(second)
- expect(load({getItem:()=>JSON.stringify(second)})).toEqual(second)
+ it('buys ten independent instances atomically and resumes the reveal queue on reload',()=>{
+ const start={...fresh(),coins:400}
+ const rolls=Array.from({length:10},(_,i)=>({id:String(i),rarityRoll:.99,unitRoll:.5}))
+ const poor={...start,coins:399}
+ expect(summonBatch(poor,rolls)).toBe(poor)
+ let save=summonBatch(start,rolls)
+ expect(save.coins).toBe(0);expect(save.fighters).toHaveLength(22)
+ expect(new Set(save.pendingSummons).size).toBe(10)
+ for(const roll of rolls){
+   expect(save.pendingSummons?.[0]).toBe(roll.id)
+   save=advanceSummon(save,roll.id)
+   expect(advanceSummon(save,roll.id)).toBe(save)
+   save=load({getItem:()=>JSON.stringify(save)})
+ }
+ expect(save.pendingSummons).toEqual([])
+ expect(summonBatch(start,[rolls[0]]).coins).toBe(360)
  })
  it('clears a three-encounter mission with speed-based initiative',()=>{
  let save=begin(fresh(),0,7)
