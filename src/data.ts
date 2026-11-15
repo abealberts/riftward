@@ -4,7 +4,7 @@ export const skills = ['Sundering blow','Bulwark strike','Arc flare']
 export const rarities = ['Common','Rare','Epic','Legendary'] as const
 export const rarityTier=(kind:number)=>kind<12?0:kind<20?1:kind<25?2:3
 export const rarity=(kind:number)=>rarities[rarityTier(kind)]
-export const sprite=(kind:number)=>'./art/vagrants/'+kind+'.svg'
+export const sprite=(kind:number)=>'./art/vagrants/'+kind+'.svg'+(kind>=12?'?v=2':'')
 export const pullCost=40
 export const pullWeights=[65,25,8,2]
 export function rollKind(rarityRoll:number,unitRoll:number){
