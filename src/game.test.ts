@@ -1,11 +1,19 @@
 import {describe,it,expect} from 'vitest'
-import {battle,damage,validLines} from './engine'
+import {battle,damage,validLines,identifyRoute} from './engine'
 import {begin,finish,fresh,party,load,persist} from './save'
 import {level,type Fighter} from './data'
 describe('combat and campaign',()=>{
- it('accepts horizontal and wrapped diagonal partitions',()=>{
- for(const ids of [[0,1,2],[3,5,4],[8,6,7]])expect(validLines(ids)).toBe(true)
- for(const ids of [[0,1,3],[0,0,0],[19,0,1],[0,1]])expect(validLines(ids)).toBe(false)
+ it('accepts intersecting lines and rejects the same line in reverse',()=>{
+ for(const ids of [[0,1,2],[3,1,4],[8,6,7]])expect(validLines(ids)).toBe(true)
+ for(const ids of [[0,5,3],[0,0,0],[19,0,1],[0,1]])expect(validLines(ids)).toBe(false)
+ })
+ it('cycles intersecting trios in gesture order, including a repeated fighter',()=>{
+ const s=fresh(),team=party(s) as Fighter[]
+ const ids=[[8,4,0],[3,4,5],[6,4,2]].map(identifyRoute)
+ const result=battle(team,Array(9).fill(500),ids,0,0,99,1000)
+ expect(result.frames.filter(f=>f.side==='ally').map(f=>f.slot)).toEqual([8,4,0,3,4,5,6,4,2])
+ expect(result.enemy).toBeGreaterThan(0)
+ expect(identifyRoute([0,4,5])).toBe(-1)
  })
  it('applies defense, bounded variability and a damage floor',()=>{
  expect(damage(20,10,0)).toBe(12);expect(damage(20,10,1)).toBe(16);expect(damage(1,100,0)).toBe(1)
