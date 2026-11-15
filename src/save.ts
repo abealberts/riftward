@@ -1,6 +1,6 @@
 import {missions,names,stats,type Fighter} from './data'
-export type Run={mission:number;encounter:number;hp:number[];enemy?:number;turn?:number;seed:number}
-export type Save={version:1;fighters:Fighter[];formation:(string|null)[];xp:number;coins:number;cleared:number;run:Run|null}
+export type Run={mission:number;encounter:number;hp:number[];enemy?:number;enemies?:number[];paidXP?:number;turn?:number;seed:number}
+export type Save={version:1;fighters:Fighter[];formation:(string|null)[];xp:number;coins:number;cleared:number;run:Run|null;victory?:{mission:number;encounter:number;xp:number;coins:number}}
 export const key='riftward.v1'
 export function fresh():Save{
  const fighters=names.map((_,kind)=>({kind,id:crypto.randomUUID(),xp:0}))
@@ -16,9 +16,14 @@ export function finish(s:Save,hp:number[],won:boolean):Save{
  const r=s.run
  if(!r)return s
  if(!won)return {...s,run:null}
- if(r.encounter<2)return {...s,run:{...r,hp,enemy:undefined,turn:1,encounter:r.encounter+1,seed:(r.seed+1)>>>0}}
- const m=missions[r.mission]
- return {...s,run:null,cleared:Math.max(s.cleared,r.mission+1),xp:s.xp+m.xp,coins:s.coins+m.coins,fighters:s.fighters.map(f=>s.formation.includes(f.id)?{...f,xp:f.xp+m.xp}:f)}
+ const mission=missions[r.mission],last=r.encounter===2
+ const earned=Math.floor(mission.xp*(r.encounter+1)/3)
+ const xp=earned-(r.paidXP??0),coins=last?mission.coins:0
+ return {...s,xp:s.xp+xp,coins:s.coins+coins,cleared:last?Math.max(s.cleared,r.mission+1):s.cleared,
+   fighters:s.fighters.map(f=>s.formation.includes(f.id)?{...f,xp:f.xp+xp}:f),
+   victory:{mission:r.mission,encounter:r.encounter,xp,coins},
+   run:last?null:{mission:r.mission,encounter:r.encounter+1,seed:(r.seed+1)>>>0,hp,paidXP:earned}}
+
 }
 export function load(store:Pick<Storage,'getItem'>):Save{
  try{const s=JSON.parse(store.getItem(key)||'null')
