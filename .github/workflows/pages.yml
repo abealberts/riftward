@@ -1,4 +1,4 @@
-name: Test and deploy Riftward
+name: Test and deploy Vagrant's Flame
 on:
   push:
     branches: [main]

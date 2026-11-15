@@ -35,12 +35,12 @@ function App(){
 
  const grid=()=><div className="grid">{members.map((f,i)=><button key={i} disabled={!!r} className={'slot '+(selected&&selected===f?.id?'active ':'')} onClick={()=>place(i)}><small>{String(i+1).padStart(2,'0')}</small>{f?<><img src={art(f.kind)} alt=""/><strong>{names[f.kind]}</strong><span className={rarity(f.kind)}>{rarity(f.kind)}</span></>:'Empty'}</button>)}</div>
  return <div className="game-shell"><main>
- <header className="hud"><button className="wordmark" onClick={()=>nav('Home')} aria-label="Riftward home">RIFTWARD</button><span>Lv. {level(s.xp)}</span><span className="wallet">◆ {s.coins} shards</span></header>
+ <header className="hud"><button className="wordmark" onClick={()=>nav('Home')} aria-label="Vagrant's Flame home">VAGRANT'S FLAME</button><span>Lv. {level(s.xp)}</span><span className="wallet">◆ {s.coins} shards</span></header>
  <section className="game-page">
  {tab!=='Home'&&<div className="page-title"><button onClick={()=>nav('Home')}>‹ Home</button><h1>{tab}</h1></div>}
  {(notice||error)&&<p role="status" className="message">{error||notice}</p>}
  {tab==='Home'&&<>
-   <div className="citadel"><h1>Riftward</h1><div className="camp-party">{members.slice(0,3).map(f=>f&&<img key={f.id} src={sprite(f.kind)} alt={names[f.kind]}/>)}</div></div>
+   <div className="citadel"><h1>Vagrant's Flame</h1><div className="camp-party">{members.slice(0,3).map(f=>f&&<img key={f.id} src={sprite(f.kind)} alt={names[f.kind]}/>)}</div></div>
    <nav className="game-menu" aria-label="Home destinations">{destinations.map((destination,i)=><button key={destination} className={'menu-tile tile-'+i} onClick={()=>nav(destination)}>
    <span className="tile-icon"><Icon i={[2,1,3,4][i]}/></span><span className="tile-copy"><strong>{destination}</strong><small>{[s.victory?'Encounter rewards':r?'Resume '+m.name:m.name,ready+' / 9 in formation',s.fighters.length+' fighters',pullCost+' shards per pull'][i]}</small></span><span aria-hidden="true">›</span>
    </button>)}</nav>
@@ -51,7 +51,8 @@ function App(){
  {tab==='Missions'&&s.victory&&<div className="victory" role="region" aria-label="Victory rewards"><small>{missions[s.victory.mission].name} · Encounter {s.victory.encounter+1} / 3</small><h2>Encounter victory</h2><p>{s.victory.encounter===2?'Mission cleared.':'The enemy formation has fallen.'}</p><dl><div><dt>Account XP</dt><dd>+{s.victory.xp}</dd></div><div><dt>XP per party fighter</dt><dd>+{s.victory.xp}</dd></div>{s.victory.coins>0&&<div><dt>Shards</dt><dd>+{s.victory.coins}</dd></div>}</dl><button className="primary" onClick={()=>set(prev=>({...prev,victory:undefined}))}>{s.victory.encounter===2?'Return to missions':'Next encounter'} →</button></div>}
  {tab==='Missions'&&!s.victory&&!r&&missions.map((a,i)=><article key={a.name}><div className="label">MISSION 0{i+1} · {a.region}</div><h2>{a.name}</h2><p>3 encounters · {a.xp} XP · {a.coins} shards</p><button className="primary" disabled={i>s.cleared} onClick={()=>launch(i)}>{i>s.cleared?'Locked':i<s.cleared?'Replay mission':'Launch expedition'}</button></article>)}
  {tab==='Missions'&&!s.victory&&r&&<Battle key={[r.mission,r.encounter,r.turn??1].join('-')} team={members as Fighter[]} run={r} next={run=>set({...s,run})} finish={advance}/>}
- <footer><span>RIFTWARD &nbsp; / &nbsp; v0.1</span><button onClick={()=>{if(confirm('Erase your Riftward progress and start again?')){set(fresh());D(null);nav('Home')}}}>Reset save</button></footer></section></main>
+ {tab==='Cheat Menu'&&<article className="cheats"><h2>Grant shards</h2><p>Add shards to your summoning balance.</p><div className="actions">{[40,400,4000].map(amount=><button key={amount} onClick={()=>{set(prev=>({...prev,coins:prev.coins+amount}));N('Added '+amount+' shards.')}}>+{amount.toLocaleString()} shards</button>)}</div><button className="primary" onClick={()=>nav('Summoning')}>Go to Summoning →</button></article>}
+ <footer><button onClick={()=>nav('Cheat Menu')}>Cheat Menu</button><span>VAGRANT'S FLAME &nbsp; / &nbsp; v0.1</span><button onClick={()=>{if(confirm("Erase your Vagrant's Flame progress and start again?")){set(fresh());D(null);nav('Home')}}}>Reset save</button></footer></section></main>
  {detail&&<dialog open aria-label="Fighter details" onKeyDown={e=>{if(e.key==='Escape')D(null)}}><button autoFocus className="close" onClick={()=>D(null)}>Close ×</button><img src={art(detail.kind)} alt=""/><p className="label">{rarity(detail.kind)} · {roles[detail.kind%3]}</p><h2>{names[detail.kind]}</h2><p>Level {level(detail.xp)} · {detail.xp%40} / 40 XP</p><p>{Object.entries(stats(detail)).map(([k,v])=>k.toUpperCase()+' '+v).join('　')}</p><strong>{skills[detail.kind%3]}</strong><p>25% chance to strike with 155% attack power.</p></dialog>}</div>
 }
 createRoot(document.getElementById('root')!).render(<App/>)

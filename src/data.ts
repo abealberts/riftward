@@ -1,10 +1,10 @@
-export const names = ['Cinderhorn','Mossmaw','Duskwisp','Glintwing','Ironhide','Riftclaw','Ashmantle','Thornling','Frostveil','Emberfin','Nightcrest','Stonecoil','Lanternray','Briarjack','Tidebell','Coppersnap','Moonquill','Sleetcap','Gloamkite','Amberjaw','Vesperlynx','Prismveil','Runebloom','Stormrook','Gravepearl','Auroroc','Crownshell','Starhart']
+export const names = ['Tallow Pilgrim', 'Cairn Keeper', 'Veiled Mourner', 'Gallows Raven', 'Bellwatch Guard', 'Shroud Leech', 'Charcoal Squire', 'Barrow Sexton', 'Wick Widow', 'Rustbound Hound', 'Cowl of Thorns', 'Crypt Bearer', 'Votive Knight', 'Ossuary Monk', 'Pallid Cantor', 'Red Tollman', 'Chapel Harrier', 'Frostbound Nun', 'Pyre Falconer', 'Grave Mastiff', 'Knight of Nails', 'Reliquary Bride', 'Saint of Briars', 'Pale Inquisitor', 'The Weeping Abbot', 'The Cinder Regent', 'Keeper of the Last Bell', 'The Ashen Hart']
 export const roles = ['Striker','Guardian','Mystic']
 export const skills = ['Sundering blow','Bulwark strike','Arc flare']
 export const rarities = ['Common','Rare','Epic','Legendary'] as const
 export const rarityTier=(kind:number)=>kind<12?0:kind<20?1:kind<25?2:3
 export const rarity=(kind:number)=>rarities[rarityTier(kind)]
-export const sprite=(kind:number)=>'./art/'+kind+(kind<12?'.png':'.svg')
+export const sprite=(kind:number)=>'./art/vagrants/'+kind+'.svg'
 export const pullCost=40
 export const pullWeights=[65,25,8,2]
 export function rollKind(rarityRoll:number,unitRoll:number){
@@ -19,8 +19,8 @@ export function rollKind(rarityRoll:number,unitRoll:number){
   throw Error('Pull roll outside expected range.')
 }
 export const missions = [
-  {name:'The Hollow Spire',region:'Ashfall Reach',foe:'Spire sentinel',xp:45,coins:80},
-  {name:'Glassfen Crossing',region:'The Viridian Marsh',foe:'Glassfen stalker',xp:65,coins:120},
+  {name:'The Hollow Spire',region:'Ashfall Reach',foe:'Bell-tower penitent',xp:45,coins:80},
+  {name:'The Drowned Chantry',region:'Widowfen',foe:'Drowned sacristan',xp:65,coins:120},
   {name:'The Obsidian Gate',region:'Blackglass Ridge',foe:'Gate warden',xp:95,coins:180}
 ]
 export type Fighter = {id:string; kind:number; xp:number}
@@ -31,9 +31,9 @@ export function stats(f:Fighter) {
 }
 
 const reinforcements = [
-  [{name:'Ashwing',kind:3},{name:'Cinder beetle',kind:6}],
-  [{name:'Fen lurker',kind:1},{name:'Marsh wisp',kind:2}],
-  [{name:'Basalt claw',kind:5},{name:'Obsidian fin',kind:9}]
+  [{name:'Gallows fledgling',kind:3},{name:'Tarnished squire',kind:6}],
+  [{name:'Fen lurker',kind:1},{name:'Widow of the mire',kind:2}],
+  [{name:'Basalt claw',kind:5},{name:'Charred mastiff',kind:9}]
 ]
 export function encounterEnemies(mission:number,encounter:number){
   const roster=[{name:missions[mission].foe,kind:[4,7,11][mission]},...reinforcements[mission].slice(0,encounter)]
