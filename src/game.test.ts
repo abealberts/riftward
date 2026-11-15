@@ -88,3 +88,20 @@ describe('combat and campaign',()=>{
  expect(load({getItem:()=> 'broken'}).version).toBe(1)
  })
 })
+
+it('consumes distinct donors once, applies matching stars to base stats, and caps each rarity',async()=>{
+ const {fuse}=await import('./save')
+ for(const [kind,cap] of [[0,4],[12,5],[20,6],[25,6]]){
+   const save=fresh(),target={id:'target',kind,xp:0}
+   const donors=Array.from({length:7},(_,i)=>({...target,id:'donor'+i}))
+   save.fighters.push(target,...donors)
+   const mixed=fuse(save,target.id,[save.fighters[1].id])
+   expect(mixed.formation[1]).toBeNull()
+   expect(mixed.fighters.find(f=>f.id===target.id)?.stars).toBe(1)
+   const upgraded=fuse(mixed,target.id,donors.map(f=>f.id))
+   const unit=upgraded.fighters.find(f=>f.id===target.id)!
+   expect(unit.stars).toBe(cap);expect(unit.xp).toBeGreaterThan(20)
+   expect(stats({...unit,xp:0}).atk).toBeGreaterThan(stats(target).atk)
+   expect(fuse(upgraded,target.id,[donors[0].id])).toBe(upgraded)
+ }
+})

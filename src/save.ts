@@ -1,4 +1,4 @@
-import {missions,names,stats,pullCost,rollKind,type Fighter} from './data'
+import {missions,names,stats,pullCost,rollKind,rarityTier,maxStars,type Fighter} from './data'
 export type Run={mission:number;encounter:number;hp:number[];enemy?:number;enemies?:number[];paidXP?:number;turn?:number;seed:number}
 export type Save={pendingSummons?:string[];summonCount?:number;version:1;fighters:Fighter[];formation:(string|null)[];xp:number;coins:number;cleared:number;run:Run|null;victory?:{mission:number;encounter:number;xp:number;coins:number}}
 export const key='riftward.v1'
@@ -42,4 +42,18 @@ export function summonBatch(save:Save,rolls:SummonRoll[]):Save{
 export function advanceSummon(save:Save,id:string):Save{
  if(save.pendingSummons?.[0]!==id)return save
  return {...save,pendingSummons:save.pendingSummons.slice(1)}
+}
+
+export function fuse(save:Save,recipientId:string,donorIds:string[]):Save{
+ const recipient=save.fighters.find(f=>f.id===recipientId)
+ const ids=new Set(donorIds)
+ if(!recipient||!ids.size||ids.has(recipientId)||save.pendingSummons?.length)return save
+ if(save.run&&save.formation.some(id=>id!==null&&(id===recipientId||ids.has(id))))return save
+ const donors=save.fighters.filter(f=>ids.has(f.id))
+ if(donors.length!==ids.size)return save
+ const extraXP=donors.reduce((sum,f)=>sum+20*(1+rarityTier(f.kind))+f.xp,0)
+ const matches=donors.filter(f=>f.kind===recipient.kind).length
+ const stars=Math.min(maxStars(recipient.kind),(recipient.stars??1)+matches)
+ return {...save,formation:save.formation.map(id=>id&&ids.has(id)?null:id),
+   fighters:save.fighters.filter(f=>!ids.has(f.id)).map(f=>f.id===recipientId?{...f,xp:f.xp+extraXP,stars}:f)}
 }

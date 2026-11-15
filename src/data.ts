@@ -23,11 +23,17 @@ export const missions = [
   {name:'The Drowned Chantry',region:'Widowfen',foe:'Drowned sacristan',xp:65,coins:120},
   {name:'The Obsidian Gate',region:'Blackglass Ridge',foe:'Gate warden',xp:95,coins:180}
 ]
-export type Fighter = {id:string; kind:number; xp:number}
+export type Fighter = {id:string; kind:number; xp:number; stars?:number}
 export const level = (xp:number) => 1 + Math.floor(xp/40)
 export function stats(f:Fighter) {
   const k=f.kind%12, l=level(f.xp)-1, tier=rarityTier(f.kind)
-  return {hp:57+k*2+(k%3===1?18:0)+tier*4+l*7,atk:14+k%5+(k%3===0?3:0)+tier+l*2,def:4+k%4+Math.ceil(tier/2)+l,agi:8+(k*7)%11+Math.ceil(tier/2)+l}
+  const bonus=1+0.1*((f.stars??1)-1)
+  return {
+    hp:Math.ceil((57+k*2+(k%3===1?18:0)+tier*4)*bonus)+l*7,
+    atk:Math.ceil((14+k%5+(k%3===0?3:0)+tier)*bonus)+l*2,
+    def:Math.ceil((4+k%4+Math.ceil(tier/2))*bonus)+l,
+    agi:Math.ceil((8+(k*7)%11+Math.ceil(tier/2))*bonus)+l
+  }
 }
 
 const reinforcements = [
@@ -41,3 +47,6 @@ export function encounterEnemies(mission:number,encounter:number){
   const base=Math.floor(total/roster.length)
   return roster.map((foe,index)=>({...foe,agi:9+(foe.kind*7)%11+mission,maxHP:base+(index===0?total%roster.length:0)}))
 }
+
+export const maxStars=(kind:number)=>[4,5,6,6][rarityTier(kind)]
+export const power=(f:Fighter)=>Object.values(stats(f)).reduce((total,value)=>total+value,0)
